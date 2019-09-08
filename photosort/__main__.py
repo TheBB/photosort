@@ -132,6 +132,7 @@ class MediaFile:
 
     def __init__(self, filename):
         self.filename = filename
+        self.sidecar = None
 
     @memoized_property
     def when_exit(self):
@@ -162,6 +163,7 @@ class Files:
     def __init__(self):
         self.files = {}
         self.ignored = []
+        self.filename_map = {}
 
     def find(self, src):
         sidecars = []
@@ -173,8 +175,15 @@ class Files:
             if cls == 'sidecar':
                 sidecars.append(fn)
                 continue
+            mediafile = MediaFile(fn)
+            self.filename_map[fn] = mediafile
             root = rootname(fn, cls, sidecar=False)
-            self.files.setdefault(root, Media(root))[cls] = MediaFile(fn)
+            self.files.setdefault(root, Media(root))[cls] = mediafile
+
+        for fn in sidecars:
+            assoc_fn, _ = path.splitext(fn)
+            if assoc_fn in self.filename_map:
+                self.filename_map[assoc_fn].sidecar = fn
 
     def finalize(self):
         self.files = sorted(self.files.values(), key=operator.attrgetter('when'))
