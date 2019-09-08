@@ -142,6 +142,8 @@ class MediaFile:
             metadata.read()
         except TypeError:
             return None
+        if 'Exif.Photo.DateTimeOriginal' in metadata:
+            return metadata['Exif.Photo.DateTimeOriginal'].value + datetime.timedelta(hours=TZ_OFFSET)
         if 'Exif.Image.DateTime' in metadata:
             return metadata['Exif.Image.DateTime'].value + datetime.timedelta(hours=TZ_OFFSET)
         return None
