@@ -113,9 +113,7 @@ class Media:
 
     def _query_when(self, allow_stat=False):
         for role in ['raw', 'pre', 'post', 'video']:
-            if role not in self.files:
-                continue
-            for mediafile in self.files[role]:
+            for mediafile in self.files.get(role, []):
                 when = mediafile.when(allow_stat=allow_stat)
                 if when is not None:
                     return when
@@ -135,7 +133,7 @@ class MediaFile:
         self.sidecar = None
 
     @memoized_property
-    def when_exit(self):
+    def when_exif(self):
         metadata = pyexiv2.ImageMetadata(self.filename)
         try:
             metadata.read()
@@ -151,7 +149,7 @@ class MediaFile:
         return datetime.datetime.fromtimestamp(stat.st_mtime) + datetime.timedelta(hours=TZ_OFFSET)
 
     def when(self, allow_stat=False):
-        when = self.when_exit
+        when = self.when_exif
         if when:
             return when
         if allow_stat:
