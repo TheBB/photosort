@@ -123,7 +123,7 @@ class MainWindow(QMainWindow):
         when = media.when.strftime('%Y-%m-%d %H:%M')
         roles = ', '.join(media.roles())
         desc = f'; {media.description}' if media.description else ''
-        self.main.message(f'{media.root} ({when}; {roles}{desc})')
+        self.main.message(f'({self.index+1}/{len(self.media)}) {media.root} ({when}; {roles}{desc})')
 
     def keyPressEvent(self, event):
         text = key_to_text(event)
