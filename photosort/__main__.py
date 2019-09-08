@@ -10,7 +10,9 @@ import os
 from os import path
 import readline
 import shlex
+import shutil
 import string
+import tqdm
 
 from .gui import run_gui
 
@@ -166,7 +168,7 @@ class Files:
 
     def find(self, src):
         sidecars = []
-        for fn in files(src):
+        for fn in tqdm.tqdm(files(src)):
             cls = classify(src, fn)
             if not cls:
                 self.ignored.append(fn)
@@ -250,12 +252,12 @@ class Files:
                     ext = path.splitext(mediafile.filename)[1].lower()
                     if ext == '.jpeg':
                         ext = '.jpg'
-                    tgt_filename = path.join(
+                    tgt_filename = path.abspath(path.join(
                         tgt,
                         f'{date}-{desc}',
                         f'{date}-{role.upper()}-{desc}',
                         f'{date}-{role.upper()}-{desc}-{index:04}{ext}'
-                    )
+                    ))
                 pairs.append((media.filename, tgt_filename))
             index += 1
         return pairs
@@ -267,6 +269,11 @@ class Files:
             tgt_fn = path.relpath(tgt_fn, tgt)
             print(src_fn, '->', tgt_fn, file=text)
         pydoc.pager(text.getvalue())
+
+    def commit(self, tgt):
+        for src_fn, tgt_fn in tqdm.tqdm(self.renames(tgt)):
+            os.makedirs(path.dirname(tgt_fn), mode=0o775, exist_ok=True)
+            shutil.copy(src_fn, tgt_fn)
 
 
 @click.command()
@@ -312,6 +319,8 @@ def main(tzoffset, src, tgt):
                 print(f'Dropped {num} media')
         elif cmd == 'dryrun':
             files.dry_run(src, tgt)
+        elif cmd == 'commit':
+            files.commit(tgt)
 
 
 if __name__ == '__main__':

@@ -19,5 +19,6 @@ setup(
         'memoized_property',
         'py3exiv2',
         'pyqt5',
+        'tqdm',
     ],
 )
