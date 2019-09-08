@@ -305,7 +305,7 @@ def main(tzoffset, src, tgt):
             arg, = args
             files.sort(arg)
         elif cmd == 'view':
-            run_gui(files.files)
+            run_gui(files.files, allow_modify_date=True)
         elif cmd in ('describe', 'drop'):
             if not args:
                 num = run_gui(files.candidates())

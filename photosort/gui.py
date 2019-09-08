@@ -99,7 +99,7 @@ class MainWidget(QWidget):
 
 class MainWindow(QMainWindow):
 
-    def __init__(self, media):
+    def __init__(self, media, allow_modify_date=False):
         QMainWindow.__init__(self)
         self.setStyleSheet('background-color: black;')
 
@@ -110,12 +110,16 @@ class MainWindow(QMainWindow):
         self.load(0)
 
         self.num = None
+        self.allow_modify_date = allow_modify_date
 
     def load(self, index):
         self.index = max(min(index, len(self.media)-1), 0)
         media = self.media[self.index]
-
         self.main.load(media.filename if media.has_photo else None)
+        self.update_msg()
+
+    def update_msg(self):
+        media = self.media[self.index]
         when = media.when.strftime('%Y-%m-%d %H:%M')
         roles = ', '.join(media.roles())
         desc = f'; {media.description}' if media.description else ''
@@ -138,11 +142,16 @@ class MainWindow(QMainWindow):
             self.close()
         elif text in ('q', 'ESC'):
             self.close()
+        elif text in ('C-c',) and self.allow_modify_date:
+            self._date = self.media[self.index].when.replace(hour=0, minute=0, second=0)
+        elif text in ('C-v',) and self.allow_modify_date:
+            self.media[self.index]._when = self._date
+            self.update_msg()
 
 
-def run_gui(media):
+def run_gui(media, **kwargs):
     app = QApplication([])
-    win = MainWindow(media)
+    win = MainWindow(media, **kwargs)
     win.showMaximized()
     app.exec_()
     return win.num
