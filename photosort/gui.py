@@ -109,7 +109,7 @@ class MainWindow(QMainWindow):
         self.media = media
         self.load(0)
 
-        self.end = None
+        self.num = None
 
     def load(self, index):
         self.index = max(min(index, len(self.media)-1), 0)
@@ -133,7 +133,7 @@ class MainWindow(QMainWindow):
         elif text in ('S-BSP', 'S-LEFT', 'H'):
             self.load(self.index - 10)
         elif text in ('RET',):
-            self.end = self.index
+            self.num = self.index + 1
             self.close()
         elif text in ('q', 'ESC'):
             self.close()
@@ -144,4 +144,4 @@ def run_gui(media):
     win = MainWindow(media)
     win.showMaximized()
     app.exec_()
-    return win.end
+    return win.num

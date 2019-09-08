@@ -186,12 +186,23 @@ class Files:
             key = operator.attrgetter('root')
         self.files = sorted(self.files, key=key)
 
-    def describe(self, num, desc):
+    def next_index(self):
         start = 0
         while self.files[start].description is not None:
             start += 1
+        return start
+
+    def candidates(self):
+        return self.files[self.next_index():]
+
+    def describe(self, num, desc):
+        start = self.next_index()
         for media in self.files[start:start+num]:
             media.description = desc
+
+    def drop(self, num):
+        start = self.next_index()
+        self.files = self.files[:start] + self.files[start+num:]
 
     def summary(self, *args):
         roles = {role for media in self.files for role in media.roles()}
@@ -230,7 +241,7 @@ def main(tzoffset, src):
     files.find(src)
     files.finalize()
 
-    readline.set_completer(completer(['summary']))
+    readline.set_completer(completer(['summary', 'describe', 'drop']))
     readline.parse_and_bind('tab: complete')
     while True:
         cmd = input('>>> ')
@@ -242,15 +253,18 @@ def main(tzoffset, src):
         if cmd == 'sort':
             arg, = args
             files.sort(arg)
-        if cmd == 'range':
-            candidates = [p for p in files.files if p.description is None]
-            end = run_gui(candidates)
-            if end is None:
+        if cmd in ('describe', 'drop'):
+            num = run_gui(files.candidates())
+            if num is None:
                 print('No media picked')
                 continue
-            print(f'Picked {end+1} media')
-            desc = input('Description: ').replace(' ', '_')
-            files.describe(end+1, desc)
+            print(f'Picked {num} media')
+
+            if cmd == 'describe':
+                desc = input('Description: ').replace(' ', '_')
+                files.describe(num, desc)
+            else:
+                files.drop(num)
 
 
 if __name__ == '__main__':
