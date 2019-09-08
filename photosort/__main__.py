@@ -242,6 +242,7 @@ class Files:
         index = 0
         pairs = []
         for media in self.files:
+            year = media.when.strftime('%Y')
             date = media.when.strftime('%Y-%m-%d')
             desc = media.description
             if desc is None:
@@ -253,7 +254,7 @@ class Files:
                     if ext == '.jpeg':
                         ext = '.jpg'
                     tgt_filename = path.abspath(path.join(
-                        tgt,
+                        tgt, year,
                         f'{date}-{desc}',
                         f'{date}-{role.upper()}-{desc}',
                         f'{date}-{role.upper()}-{desc}-{index:04}{ext}'
