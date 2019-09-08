@@ -248,7 +248,7 @@ def main(tzoffset, src):
     files.find(src)
     files.finalize()
 
-    readline.set_completer(completer(['summary', 'describe', 'drop']))
+    readline.set_completer(completer(['summary', 'describe', 'drop', 'view']))
     readline.parse_and_bind('tab: complete')
     while True:
         cmd = input('>>> ')
@@ -257,21 +257,28 @@ def main(tzoffset, src):
         cmd, *args = shlex.split(cmd)
         if cmd == 'summary':
             files.summary()
-        if cmd == 'sort':
+        elif cmd == 'sort':
             arg, = args
             files.sort(arg)
-        if cmd in ('describe', 'drop'):
-            num = run_gui(files.candidates())
+        elif cmd == 'view':
+            run_gui(files.files)
+        elif cmd in ('describe', 'drop'):
+            if not args:
+                num = run_gui(files.candidates())
+            else:
+                num, = map(int, args)
+
             if num is None:
                 print('No media picked')
                 continue
-            print(f'Picked {num} media')
 
             if cmd == 'describe':
+                print(f'Picked {num} media')
                 desc = input('Description: ').replace(' ', '_')
                 files.describe(num, desc)
             else:
                 files.drop(num)
+                print(f'Dropped {num} media')
 
 
 if __name__ == '__main__':
