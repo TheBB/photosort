@@ -59,7 +59,7 @@ def classify(root, filename):
             return 'post'
         if dirs[0].lower() in ('pre', 'old'):
             return 'pre'
-        return 'raster'
+        return 'pre'
     return None
 
 def rootname(filename, cls, sidecar=True):
