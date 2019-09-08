@@ -274,6 +274,8 @@ class Files:
             src_fn = path.relpath(src_fn, src)
             tgt_fn = path.relpath(tgt_fn, tgt)
             print(src_fn, '->', tgt_fn, file=text)
+            if os.path.exists(tgt_fn):
+                print('!!! FILE EXISTS !!!', file=text)
         pydoc.pager(text.getvalue())
 
     def commit(self, tgt):
