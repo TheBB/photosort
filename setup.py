@@ -16,6 +16,8 @@ setup(
     },
     install_requires=[
         'click',
+        'memoized_property',
         'py3exiv2',
+        'pyqt5',
     ],
 )

@@ -1,8 +1,20 @@
 import click
+import datetime
+import io
+import itertools
+import pydoc
 import pyexiv2
+from memoized_property import memoized_property
 import operator
 import os
 from os import path
+import readline
+import shlex
+
+from .gui import run_gui
+
+
+TZ_OFFSET = 0
 
 
 def str_or_empty(n):
@@ -58,15 +70,29 @@ def rootname(filename, cls, sidecar=True):
         return rootname(path.splitext(filename)[0], sidecar=False)
     return path.splitext(path.basename(filename))[0]
 
+def completer(options):
+    matches = []
+    def complete(text, state):
+        if state == 0:
+            matches.clear()
+            matches.extend(c for c in options if c.startswith(text))
+        return matches[state] if state < len(matches) else None
+    return complete
+
 
 class Media:
 
     def __init__(self, root):
         self.root = root
+        self.description = None
         self.files = {}
 
     def __setitem__(self, key, val):
         self.files.setdefault(key, []).append(val)
+
+    @property
+    def has_photo(self):
+        return 'pre' in self.roles()
 
     def nrole(self, key):
         return len(self.files.get(key, []))
@@ -78,35 +104,57 @@ class Media:
         keys = sorted(self.roles)
         return ', '.join('{} {}'.format(len(self.files[k]), k) for k in keys)
 
-    def when(self):
-        for role in ['raw', 'pre', 'post']:
+    @memoized_property
+    def filename(self):
+        if 'pre' in self.roles():
+            for mediafile in self.files['pre']:
+                return mediafile.filename
+        return None
+
+    def _query_when(self, allow_stat=False):
+        for role in ['raw', 'pre', 'post', 'video']:
             if role not in self.files:
                 continue
             for mediafile in self.files[role]:
-                when = mediafile.when()
+                when = mediafile.when(allow_stat=allow_stat)
                 if when is not None:
                     return when
-        return None
+
+    @memoized_property
+    def when(self):
+        when = self._query_when(allow_stat=False)
+        if when:
+            return when
+        return self._query_when(allow_stat=True)
 
 
 class MediaFile:
 
     def __init__(self, filename):
         self.filename = filename
-        self._when = None
 
-    def when(self):
-        if self._when is not None:
-            if self._when == 0:
-                return None
-            return self._when
+    @memoized_property
+    def when_exit(self):
         metadata = pyexiv2.ImageMetadata(self.filename)
-        metadata.read()
+        try:
+            metadata.read()
+        except TypeError:
+            return None
         if 'Exif.Image.DateTime' in metadata:
-            self._when = metadata['Exif.Image.DateTime'].value
-            return self._when
-        self._when = 0
+            return metadata['Exif.Image.DateTime'].value + datetime.timedelta(hours=TZ_OFFSET)
         return None
+
+    @memoized_property
+    def when_stat(self):
+        stat = os.stat(self.filename)
+        return datetime.datetime.fromtimestamp(stat.st_mtime) + datetime.timedelta(hours=TZ_OFFSET)
+
+    def when(self, allow_stat=False):
+        when = self.when_exit
+        if when:
+            return when
+        if allow_stat:
+            return self.when_stat
 
 
 class Files:
@@ -129,46 +177,80 @@ class Files:
             self.files.setdefault(root, Media(root))[cls] = MediaFile(fn)
 
     def finalize(self):
-        self.videos = [f for f in self.files.values() if 'video' in f.roles()]
-        photos = [f for f in self.files.values() if 'video' not in f.roles()]
-        self.photos = sorted(photos, key=operator.methodcaller('when'))
+        self.files = sorted(self.files.values(), key=operator.attrgetter('when'))
 
-    def summary(self):
-        roles = {role for media in self.photos for role in media.roles()}
-        roles.update({role for media in self.videos for role in media.roles()})
+    def sort(self, by):
+        if by == 'time':
+            key = operator.attrgetter('when')
+        else:
+            key = operator.attrgetter('root')
+        self.files = sorted(self.files, key=key)
+
+    def describe(self, num, desc):
+        start = 0
+        while self.files[start].description is not None:
+            start += 1
+        for media in self.files[start:start+num]:
+            media.description = desc
+
+    def summary(self, *args):
+        roles = {role for media in self.files for role in media.roles()}
         roles = sorted(roles)
-        rootlen = max(len(media.root) for media in self.photos)
+        rootlen = max(len(media.root) for media in self.files)
         rolelen = max(len(role) for role in roles)
         datelen = 16
+        desclen = 30
 
-        def prn(root, date, roles):
-            print(f'{root: >{rootlen}}', end='  ')
+        text = io.StringIO()
+        def prn(root, date, roles, desc):
+            print(f'{root: >{rootlen}}', end='  ', file=text)
             if not isinstance(date, str):
                 date = date.strftime('%Y-%m-%d %H:%M')
-            print(f'{date: >{datelen}}', end='  ')
+            print(f'{date: >{datelen}}', end='  ', file=text)
             for role in roles:
-                print(f'{role: >{rolelen}}', end='  ')
-            print()
+                print(f'{role: >{rolelen}}', end='  ', file=text)
+            print(desc or '', file=text)
 
-        prn('Name', 'Date', (role.title() for role in roles))
-        print('-' * (2 + rootlen + datelen + len(roles) * (rolelen + 2)))
-        for media in self.photos:
-            prn(media.root, media.when(), (str_or_empty(media.nrole(role)) for role in roles))
-        for media in self.videos:
-            prn(media.root, '', (str_or_empty(media.nrole(role)) for role in roles))
+        prn('Name', 'Date', (role.title() for role in roles), 'Description')
+        print('-' * (4 + rootlen + datelen + desclen + len(roles) * (rolelen + 2)), file=text)
+        for media in self.files:
+            prn(media.root, media.when, (str_or_empty(media.nrole(role)) for role in roles), media.description)
+
+        pydoc.pager(text.getvalue())
 
 
 @click.command()
+@click.option('--tzoffset', default=0)
 @click.argument('src', type=click.Path(exists=True))
-def main(src):
+def main(tzoffset, src):
+    global TZ_OFFSET
+    TZ_OFFSET = tzoffset
+
     files = Files()
     files.find(src)
     files.finalize()
-    files.summary()
 
-        # if kind is None:
-        #     _, ext = path.splitext(fn)
-        #     print(fn, ext)
+    readline.set_completer(completer(['summary']))
+    readline.parse_and_bind('tab: complete')
+    while True:
+        cmd = input('>>> ')
+        if not cmd.strip():
+            continue
+        cmd, *args = shlex.split(cmd)
+        if cmd == 'summary':
+            files.summary()
+        if cmd == 'sort':
+            arg, = args
+            files.sort(arg)
+        if cmd == 'range':
+            candidates = [p for p in files.files if p.description is None]
+            end = run_gui(candidates)
+            if end is None:
+                print('No media picked')
+                continue
+            print(f'Picked {end+1} media')
+            desc = input('Description: ').replace(' ', '_')
+            files.describe(end+1, desc)
 
 
 if __name__ == '__main__':
