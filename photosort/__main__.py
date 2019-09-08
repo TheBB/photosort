@@ -322,6 +322,7 @@ def main(tzoffset, src, tgt):
             files.dry_run(src, tgt)
         elif cmd == 'commit':
             files.commit(tgt)
+            break
 
 
 if __name__ == '__main__':
