@@ -118,7 +118,8 @@ class MainWindow(QMainWindow):
         self.main.load(media.filename if media.has_photo else None)
         when = media.when.strftime('%Y-%m-%d %H:%M')
         roles = ', '.join(media.roles())
-        self.main.message(f'{media.root} ({when}; {roles})')
+        desc = f'; {media.description}' if media.description else ''
+        self.main.message(f'{media.root} ({when}; {roles}{desc})')
 
     def keyPressEvent(self, event):
         text = key_to_text(event)
