@@ -10,6 +10,7 @@ import os
 from os import path
 import readline
 import shlex
+import string
 
 from .gui import run_gui
 
@@ -233,14 +234,46 @@ class Files:
         print('-' * (4 + rootlen + datelen + desclen + len(roles) * (rolelen + 2)), file=text)
         for media in self.files:
             prn(media.root, media.when, (str_or_empty(media.nrole(role)) for role in roles), media.description)
+        pydoc.pager(text.getvalue())
 
+    def renames(self, tgt):
+        index = 0
+        pairs = []
+        for media in self.files:
+            date = media.when.strftime('%Y-%m-%d')
+            desc = media.description
+            if desc is None:
+                continue
+            for role, mediafiles in media.files.items():
+                suffixes = ('_'+s for s in string.ascii_lowercase) if len(mediafiles) > 1 else ('',)
+                for mediafile, suffix in zip(mediafiles, suffixes):
+                    ext = path.splitext(mediafile.filename)[1].lower()
+                    if ext == '.jpeg':
+                        ext = '.jpg'
+                    tgt_filename = path.join(
+                        tgt,
+                        f'{date}-{desc}',
+                        f'{date}-{role.upper()}-{desc}',
+                        f'{date}-{role.upper()}-{desc}-{index:04}{ext}'
+                    )
+                pairs.append((media.filename, tgt_filename))
+            index += 1
+        return pairs
+
+    def dry_run(self, src, tgt):
+        text = io.StringIO()
+        for src_fn, tgt_fn in self.renames(tgt):
+            src_fn = path.relpath(src_fn, src)
+            tgt_fn = path.relpath(tgt_fn, tgt)
+            print(src_fn, '->', tgt_fn, file=text)
         pydoc.pager(text.getvalue())
 
 
 @click.command()
 @click.option('--tzoffset', default=0)
 @click.argument('src', type=click.Path(exists=True))
-def main(tzoffset, src):
+@click.argument('tgt', type=click.Path(exists=True), default='.')
+def main(tzoffset, src, tgt):
     global TZ_OFFSET
     TZ_OFFSET = tzoffset
 
@@ -248,7 +281,7 @@ def main(tzoffset, src):
     files.find(src)
     files.finalize()
 
-    readline.set_completer(completer(['summary', 'describe', 'drop', 'view']))
+    readline.set_completer(completer(['summary', 'describe', 'drop', 'view', 'dryrun']))
     readline.parse_and_bind('tab: complete')
     while True:
         cmd = input('>>> ')
@@ -267,11 +300,9 @@ def main(tzoffset, src):
                 num = run_gui(files.candidates())
             else:
                 num, = map(int, args)
-
             if num is None:
                 print('No media picked')
                 continue
-
             if cmd == 'describe':
                 print(f'Picked {num} media')
                 desc = input('Description: ').replace(' ', '_')
@@ -279,6 +310,8 @@ def main(tzoffset, src):
             else:
                 files.drop(num)
                 print(f'Dropped {num} media')
+        elif cmd == 'dryrun':
+            files.dry_run(src, tgt)
 
 
 if __name__ == '__main__':
