@@ -124,13 +124,13 @@ class MainWindow(QMainWindow):
         text = key_to_text(event)
         if text is None:
             return
-        if text in ('SPC', 'RIGHT', 'l'):
+        if text in ('SPC', 'RIGHT', 'l', 'j'):
             self.load(self.index + 1)
-        elif text in ('S-SPC', 'S-RIGHT', 'L'):
+        elif text in ('S-SPC', 'S-RIGHT', 'L', 'J'):
             self.load(self.index + 10)
-        elif text in ('BSP', 'LEFT', 'h'):
+        elif text in ('BSP', 'LEFT', 'h', 'k'):
             self.load(self.index - 1)
-        elif text in ('S-BSP', 'S-LEFT', 'H'):
+        elif text in ('S-BSP', 'S-LEFT', 'H', 'K'):
             self.load(self.index - 10)
         elif text in ('RET',):
             self.num = self.index + 1
