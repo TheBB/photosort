@@ -168,7 +168,7 @@ class Files:
 
     def find(self, src):
         sidecars = []
-        for fn in tqdm.tqdm(files(src)):
+        for fn in tqdm.tqdm(files(src), unit=' files'):
             cls = classify(src, fn)
             if not cls:
                 self.ignored.append(fn)
@@ -272,7 +272,7 @@ class Files:
         pydoc.pager(text.getvalue())
 
     def commit(self, tgt):
-        for src_fn, tgt_fn in tqdm.tqdm(self.renames(tgt)):
+        for src_fn, tgt_fn in tqdm.tqdm(self.renames(tgt), unit=' files'):
             os.makedirs(path.dirname(tgt_fn), mode=0o775, exist_ok=True)
             shutil.copy(src_fn, tgt_fn)
 
