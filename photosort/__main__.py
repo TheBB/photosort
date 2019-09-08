@@ -259,7 +259,10 @@ class Files:
                         f'{date}-{role.upper()}-{desc}',
                         f'{date}-{role.upper()}-{desc}-{index:04}{ext}'
                     ))
-                pairs.append((media.filename, tgt_filename))
+                    pairs.append((media.filename, tgt_filename))
+                    if mediafile.sidecar:
+                        ext = path.splitext(mediafile.sidecar)[1]
+                        pairs.append((mediafile.sidecar, f'{tgt_filename}{ext}'))
             index += 1
         return pairs
 
