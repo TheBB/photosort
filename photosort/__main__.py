@@ -58,7 +58,7 @@ def classify(root, filename):
         return 'video'
     if ext.lower() in ('.jpg', '.jpeg', '.tif', '.tiff'):
         dirs = list(dirnames(path.relpath(path.dirname(filename), root)))
-        if dirs[0].lower() in ('post', 'out'):
+        if dirs[0].lower() in ('post', 'out') or base.endswith('_corr'):
             return 'post'
         if dirs[0].lower() in ('pre', 'old'):
             return 'pre'
@@ -66,12 +66,14 @@ def classify(root, filename):
     return None
 
 def rootname(filename, cls, sidecar=True):
-    basename = path.basename(filename)
     if cls == 'sidecar':
         if not sidecar:
             return None
         return rootname(path.splitext(filename)[0], sidecar=False)
-    return path.splitext(path.basename(filename))[0]
+    root = path.splitext(path.basename(filename))[0]
+    if root.endswith('_corr'):
+        root = root[:-5]
+    return root
 
 def completer(options):
     matches = []
