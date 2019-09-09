@@ -131,6 +131,37 @@ class Media:
             return when
         return self._query_when(allow_stat=True)
 
+    def iter_all(self):
+        for role, mediafiles in self.files.items():
+            suffixes = ('_'+s for s in string.ascii_lowercase) if len(mediafiles) > 1 else ('',) * 26
+            for mediafile, suffix in zip(mediafiles, suffixes):
+                yield role, mediafile, suffix
+
+    def _propose_targets(self, directory, index):
+        return [
+            mediafile.propose_target(directory, self.when, role, self.description, index, suffix)
+            for role, mediafile, suffix in self.iter_all()
+        ]
+
+    def _propose_index(self, directory, seized):
+        for index in range(1000):
+            targets = self._propose_targets(directory, index)
+            if all(not os.path.exists(target) and target not in seized for target in targets):
+                return index
+
+    def pairs(self, directory, seized):
+        index = self._propose_index(directory, seized)
+        assert index is not None
+        pairs = []
+        for role, mediafile, suffix in self.iter_all():
+            tgt_filename = mediafile.propose_target(directory, self.when, role, self.description, index, suffix)
+            pairs.append((mediafile.filename, tgt_filename))
+            seized.add(tgt_filename)
+            if mediafile.sidecar:
+                _, ext = path.splitext(mediafile.sidecar)
+                pairs.append((mediafile.sidecar, f'{tgt_filename}{ext}'))
+        return pairs
+
 
 class MediaFile:
 
@@ -162,6 +193,19 @@ class MediaFile:
             return when
         if allow_stat:
             return self.when_stat
+
+    def propose_target(self, directory, date, role, desc, index, suffix):
+        year = date.strftime('%Y')
+        date = date.strftime('%Y-%m-%d')
+        ext = path.splitext(self.filename)[1].lower()
+        if ext == '.jpeg':
+            ext = '.jpg'
+        return path.abspath(path.join(
+            directory, year,
+            f'{date}-{desc}',
+            f'{date}-{role.upper()}-{desc}',
+            f'{date}-{role.upper()}-{desc}-{index:04}{suffix}{ext}'
+        ))
 
 
 class Files:
@@ -247,31 +291,7 @@ class Files:
         pairs = []
         seized = set()
         for media in self.files:
-            year = media.when.strftime('%Y')
-            date = media.when.strftime('%Y-%m-%d')
-            desc = media.description
-            if desc is None:
-                continue
-            for role, mediafiles in media.files.items():
-                suffixes = ('_'+s for s in string.ascii_lowercase) if len(mediafiles) > 1 else ('',)
-                for mediafile, suffix in zip(mediafiles, suffixes):
-                    ext = path.splitext(mediafile.filename)[1].lower()
-                    if ext == '.jpeg':
-                        ext = '.jpg'
-                    for index in range(1000):
-                        tgt_filename = path.abspath(path.join(
-                            tgt, year,
-                            f'{date}-{desc}',
-                            f'{date}-{role.upper()}-{desc}',
-                            f'{date}-{role.upper()}-{desc}-{index:04}{ext}'
-                        ))
-                        if not os.path.exists(tgt_filename) and tgt_filename not in seized:
-                            break
-                    pairs.append((mediafile.filename, tgt_filename))
-                    seized.add(tgt_filename)
-                    if mediafile.sidecar:
-                        ext = path.splitext(mediafile.sidecar)[1]
-                        pairs.append((mediafile.sidecar, f'{tgt_filename}{ext}'))
+            pairs.extend(media.pairs(tgt, seized))
         return pairs
 
     def dry_run(self, src, tgt):
