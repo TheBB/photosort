@@ -147,6 +147,16 @@ class MainWindow(QMainWindow):
         elif text in ('C-v',) and self.allow_modify_date:
             self.media[self.index]._when = self._date
             self.update_msg()
+        elif text in ('y', 'Y', 'm', 'M', 'd', 'D') and self.allow_modify_date:
+            attrname = {'y': 'year', 'm': 'month', 'd': 'day'}[text.lower()]
+            step = 1 if text.upper() == text else -1
+            media = self.media[self.index]
+            date = media.when
+            try:
+                media._when = date.replace(hour=0, minute=0, second=0, **{attrname: getattr(date, attrname) + step})
+            except ValueError:
+                pass
+            self.update_msg()
 
 
 def run_gui(media, **kwargs):
