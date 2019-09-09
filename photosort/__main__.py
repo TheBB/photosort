@@ -264,7 +264,7 @@ class Files:
                         ))
                         if not os.path.exists(tgt_filename) and tgt_filename not in seized:
                             break
-                    pairs.append((media.filename, tgt_filename))
+                    pairs.append((mediafile.filename, tgt_filename))
                     seized.add(tgt_filename)
                     if mediafile.sidecar:
                         ext = path.splitext(mediafile.sidecar)[1]
