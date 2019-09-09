@@ -200,7 +200,7 @@ class Files:
 
     def next_index(self):
         start = 0
-        while self.files[start].description is not None:
+        while start < len(self.files) and self.files[start].description is not None:
             start += 1
         return start
 
@@ -315,6 +315,10 @@ def main(tzoffset, src, tgt):
             run_gui(files.files, allow_modify_date=True)
         elif cmd in ('describe', 'drop'):
             if not args:
+                candidates = files.candidates()
+                if not candidates:
+                    print('No candidates left')
+                    continue
                 num = run_gui(files.candidates())
             else:
                 num, = map(int, args)
