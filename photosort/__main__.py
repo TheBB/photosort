@@ -299,7 +299,7 @@ def main(tzoffset, src, tgt):
     files.find(src)
     files.finalize()
 
-    readline.set_completer(completer(['summary', 'describe', 'drop', 'view', 'dryrun']))
+    readline.set_completer(completer(['summary', 'describe', 'drop', 'view', 'dryrun', 'commit']))
     readline.parse_and_bind('tab: complete')
     while True:
         cmd = input('>>> ')
