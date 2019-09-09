@@ -241,8 +241,8 @@ class Files:
         pydoc.pager(text.getvalue())
 
     def renames(self, tgt):
-        index = 0
         pairs = []
+        seized = set()
         for media in self.files:
             year = media.when.strftime('%Y')
             date = media.when.strftime('%Y-%m-%d')
@@ -255,17 +255,20 @@ class Files:
                     ext = path.splitext(mediafile.filename)[1].lower()
                     if ext == '.jpeg':
                         ext = '.jpg'
-                    tgt_filename = path.abspath(path.join(
-                        tgt, year,
-                        f'{date}-{desc}',
-                        f'{date}-{role.upper()}-{desc}',
-                        f'{date}-{role.upper()}-{desc}-{index:04}{ext}'
-                    ))
+                    for index in range(1000):
+                        tgt_filename = path.abspath(path.join(
+                            tgt, year,
+                            f'{date}-{desc}',
+                            f'{date}-{role.upper()}-{desc}',
+                            f'{date}-{role.upper()}-{desc}-{index:04}{ext}'
+                        ))
+                        if not os.path.exists(tgt_filename) and tgt_filename not in seized:
+                            break
                     pairs.append((media.filename, tgt_filename))
+                    seized.add(tgt_filename)
                     if mediafile.sidecar:
                         ext = path.splitext(mediafile.sidecar)[1]
                         pairs.append((mediafile.sidecar, f'{tgt_filename}{ext}'))
-            index += 1
         return pairs
 
     def dry_run(self, src, tgt):
