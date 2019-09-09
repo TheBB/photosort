@@ -97,7 +97,7 @@ class Media:
 
     @property
     def has_photo(self):
-        return 'pre' in self.roles()
+        return 'pre' in self.roles() or 'post' in self.roles()
 
     def nrole(self, key):
         return len(self.files.get(key, []))
@@ -111,9 +111,10 @@ class Media:
 
     @memoized_property
     def filename(self):
-        if 'pre' in self.roles():
-            for mediafile in self.files['pre']:
-                return mediafile.filename
+        for role in ('pre', 'post'):
+            if role in self.roles():
+                for mediafile in self.files[role]:
+                    return mediafile.filename
         return None
 
     def _query_when(self, allow_stat=False):
