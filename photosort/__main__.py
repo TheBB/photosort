@@ -291,7 +291,8 @@ class Files:
         pairs = []
         seized = set()
         for media in self.files:
-            pairs.extend(media.pairs(tgt, seized))
+            if media.description:
+                pairs.extend(media.pairs(tgt, seized))
         return pairs
 
     def dry_run(self, src, tgt):
